@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+{% block title %}Rooms — HMS{% endblock %}
+{% block page_title %}Room Management{% endblock %}
+{% block breadcrumb %}HMS &rsaquo; Rooms{% endblock %}
+
+{% block content %}
+
+<div class="section-header mb-4">
+  <div>
+    <div class="section-title">Rooms</div>
+    <div class="section-subtitle">Track room occupancy and allocations</div>
+  </div>
+  <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addRoomModal">
+    <i class="bi bi-plus-circle-fill"></i> Add Room
+  </button>
+</div>
+
+<!-- Stats Row -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-4">
+    <div class="stat-card sc-indigo" style="padding:18px;">
+      <div class="stat-card-deco"></div>
+      <div class="stat-value" style="font-size:28px;">{{ stats.total }}</div>
+      <div class="stat-label">Total Rooms</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-4">
+    <div class="stat-card sc-emerald" style="padding:18px;">
+      <div class="stat-card-deco"></div>
+      <div class="stat-value" style="font-size:28px;">{{ stats.occupied }}</div>
+      <div class="stat-label">Occupied</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-4">
+    <div class="stat-card sc-cyan" style="padding:18px;">
+      <div class="stat-card-deco"></div>
+      <div class="stat-value" style="font-size:28px;">{{ stats.vacant }}</div>
+      <div class="stat-label">Vacant</div>
+    </div>
+  </div>
+</div>
+
+<!-- Filter Pills -->
+<div class="d-flex gap-2 mb-4 flex-wrap">
+  <a href="{{ url_for('rooms') }}" class="filter-pill {% if not request.args.get('floor') %}active{% endif %}">All Floors</a>
+  {% for f in [1,2] %}
+  <a href="{{ url_for('rooms') }}?floor={{ f }}" class="filter-pill {% if request.args.get('floor')==f|string %}active{% endif %}">Floor {{ f }}</a>
+  {% endfor %}
+</div>
+
+<!-- Room Cards Grid -->
+<div class="row g-3 mb-4">
+  {% set floor_filter = request.args.get('floor')|int if request.args.get('floor') else 0 %}
+  {% for r in rooms %}
+  {% if not floor_filter or r.floor == floor_filter %}
+  <div class="col-6 col-md-4 col-lg-3">
+    <div class="room-card {% if r.status=='Occupied' %}occupied{% else %}vacant{% endif %}">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;">
+        <div>
+          <div class="room-number">{{ r.room_number }}</div>
+          <div class="room-meta">Floor {{ r.floor }}  </div>
+        </div>
+        {# &bull; {{ r.room_type }} #}
+        <span class="badge-modern {% if r.status=='Occupied' %}badge-success{% else %}badge-primary{% endif %}">
+          {{ r.status }}
+        </span>
+      </div>
+
+      <!-- Occupancy bar -->
+      <div style="margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-bottom:4px;">
+          <span>Occupancy</span>
+          <span>{{ r.current_occupancy }}/{{ r.capacity }}</span>
+        </div>
+        <div class="progress-modern">
+          <div class="progress-bar-modern" data-width="{{ ((r.current_occupancy / r.capacity) * 100)|int if r.capacity else 0 }}"
+               style="background:{% if r.status=='Occupied' %}#10b981{% else %}#6366f1{% endif %};width:{% if r.capacity %}{{ ((r.current_occupancy / r.capacity) * 100)|int }}{% else %}0{% endif %}%;">
+          </div>
+        </div>
+      </div>
+
+      {% if r.student_names %}
+      <div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+        <i class="bi bi-person me-1"></i>{{ r.student_names }}
+      </div>
+      {% endif %}
+
+      {# {% if r.amenities %}
+      <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">
+        <i class="bi bi-wifi me-1"></i>{{ r.amenities }}
+      </div>
+      {% endif %} #}
+
+      <div style="display:flex;gap:6px;margin-top:4px;">
+        <button class="btn btn-light btn-sm flex-grow-1" style="font-size:11px;"
+          onclick="openEditRoom({{ r.id }}, '{{ r.room_number }}', {{ r.capacity }}, '{{ r.room_type }}', {{ r.floor }}, )">
+          <i class="bi bi-pencil-fill"></i> Edit
+        </button>
+        {# '{{ r.amenities or '' }}' #}
+        <form method="POST" action="{{ url_for('delete_room_route', rid=r.id) }}" class="delete-form">
+          <button type="submit" class="btn btn-light btn-sm" style="font-size:11px;">
+            <i class="bi bi-trash3-fill" style="color:#ef4444;"></i>
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+  {% endfor %}
+  {% if not rooms %}
+  <div class="col-12">
+    <div class="card"><div class="empty-state"><i class="bi bi-door-open"></i><h6>No Rooms Found</h6><p>Add your first room to get started.</p></div></div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Room List Table -->
+<div class="card">
+  <div class="card-header">
+    <span class="card-title"><i class="bi bi-table"></i> Room List</span>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table-modern w-100">
+        <thead>
+          <tr><th>Room No.</th><th>Floor</th><th>Type</th><th>Capacity</th><th>Occupied</th><th>Status</th><th>Students</th></tr>
+        </thead>
+        {# <th>Amenities</th> #}
+        <tbody>
+          {% for r in rooms %}
+          <tr>
+            <td><code style="font-size:13px;font-weight:700;background:#f1f5f9;padding:3px 10px;border-radius:6px;">{{ r.room_number }}</code></td>
+            <td style="font-size:13px;">Floor {{ r.floor }}</td>
+            <td><span class="badge-modern badge-gray">{{ r.room_type }}</span></td>
+            <td style="font-size:13px;text-align:center;">{{ r.capacity }}</td>
+            <td style="font-size:13px;text-align:center;">{{ r.current_occupancy }}</td>
+            <td>
+              <span class="badge-modern {% if r.status=='Occupied' %}badge-success{% else %}badge-primary{% endif %}">
+                <span class="status-dot {% if r.status=='Occupied' %}dot-green{% else %}dot-blue{% endif %}"></span>
+                {{ r.status }}
+              </span>
+            </td>
+            {# <td style="font-size:12px;color:var(--text-muted);">{{ r.amenities or '—' }}</td> #}
+            <td style="font-size:12px;">{{ r.student_names or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ADD ROOM MODAL -->
+<div class="modal fade" id="addRoomModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-plus-circle-fill me-2" style="color:#6366f1;"></i>Add Room</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" action="{{ url_for('add_room_route') }}">
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Room Number *</label>
+              <input type="text" name="room_number" class="form-control" placeholder="e.g. 101" required/>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Floor *</label>
+              <select name="floor" class="form-select" required>
+                {% for f in range(1, 3) %}<option value="{{ f }}">Floor {{ f }}</option>{% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Room Type *</label>
+              <select name="room_type" class="form-select" required>
+                <option value="Single">Single</option>
+                <option value="Double">Double</option>
+                <option value="Triple">Triple</option>
+                {# <option value="Dormitory">Dormitory</option> #}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Capacity *</label>
+              <input type="number" name="capacity" class="form-control" min="1" max="10" value="1" required/>
+            </div>
+            {# <div class="col-12">
+              <label class="form-label">Amenities</label>
+              <input type="text" name="amenities" class="form-control" placeholder="e.g. WiFi, AC, Attached Bathroom"/>
+            </div> #}
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Add Room</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT ROOM MODAL -->
+<div class="modal fade" id="editRoomModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-pencil-fill me-2" style="color:#6366f1;"></i>Edit Room</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" id="editRoomForm" action="">
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Room Number *</label>
+              <input type="text" name="room_number" id="er_room_number" class="form-control" required/>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Floor *</label>
+              <select name="floor" id="er_floor" class="form-select" required>
+                {% for f in range(1,3) %}<option value="{{ f }}">Floor {{ f }}</option>{% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Room Type *</label>
+              <select name="room_type" id="er_room_type" class="form-select">
+                <option value="Single">Single</option>
+                <option value="Double">Double</option>
+                <option value="Triple">Triple</option>
+                {# <option value="Dormitory">Dormitory</option> #}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Capacity *</label>
+              <input type="number" name="capacity" id="er_capacity" class="form-control" min="1" max="10" required/>
+            </div>
+            {# <div class="col-12">
+              <label class="form-label">Amenities</label>
+              <input type="text" name="amenities" id="er_amenities" class="form-control"/>
+            </div> #}
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function openEditRoom(id, num, cap, type, floor, amenities) {
+  document.getElementById('editRoomForm').action = `/rooms/edit/${id}`;
+  document.getElementById('er_room_number').value = num;
+  document.getElementById('er_capacity').value = cap;
+  document.getElementById('er_room_type').value = type;
+  document.getElementById('er_floor').value = floor;
+  {# document.getElementById('er_amenities').value = amenities; #}
+  new bootstrap.Modal(document.getElementById('editRoomModal')).show();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,301 @@
+{% extends "base.html" %}
+{% block title %}Students — HMS{% endblock %}
+{% block page_title %}Student Management{% endblock %}
+{% block breadcrumb %}HMS &rsaquo; Students{% endblock %}
+
+{% block content %}
+
+<!-- Section Header -->
+<div class="section-header mb-4">
+  <div>
+    <div class="section-title">Students</div>
+    <div class="section-subtitle">Manage all hostel residents</div>
+  </div>
+  <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addStudentModal">
+    <i class="bi bi-person-plus-fill"></i> Add Student
+  </button>
+</div>
+
+<!-- Search Bar -->
+<div class="card mb-4">
+  <div class="card-body" style="padding:16px 20px;">
+    <form method="GET" action="{{ url_for('students') }}" class="d-flex gap-3 align-items-center flex-wrap">
+      <div class="search-bar flex-grow-1" style="min-width:200px;">
+        <i class="bi bi-search"></i>
+        <input type="text" name="search" value="{{ search }}" placeholder="Search by name, ID or department…"/>
+      </div>
+      <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-search"></i> Search</button>
+      {% if search %}
+        <a href="{{ url_for('students') }}" class="btn btn-light btn-sm"><i class="bi bi-x"></i> Clear</a>
+      {% endif %}
+    </form>
+  </div>
+</div>
+
+<!-- Students Table -->
+<div class="card">
+  <div class="card-header">
+    <span class="card-title"><i class="bi bi-people-fill"></i> All Students
+      <span class="badge-modern badge-primary ms-2">{{ students|length }}</span>
+    </span>
+  </div>
+  <div class="card-body p-0">
+    {% if students %}
+    <div class="table-responsive">
+      <table class="table-modern w-100">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Student</th>
+            <th>ID</th>
+            <th>Department</th>
+            <th>Phone</th>
+            <th>Room</th>
+            <th>Joining Date</th>
+            <th>Status</th>
+            <th style="text-align:right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in students %}
+          <tr>
+            <td style="color:var(--text-muted);font-size:12px;">{{ loop.index }}</td>
+            <td>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <div class="avatar avatar-sm">{{ s.name[0]|upper }}</div>
+                <div>
+                  <!-- Clickable name → 360° Profile -->
+                  <a href="{{ url_for('student_360_profile', sid=s.id) }}"
+                     style="font-weight:700;font-size:13.5px;color:var(--primary);text-decoration:none;"
+                     title="View 360° Profile">
+                    {{ s.name }}
+                  </a>
+                  <div style="font-size:11px;color:var(--text-muted);">{{ s.email or '—' }}</div>
+                </div>
+              </div>
+            </td>
+            <td><code style="font-size:12px;background:#f1f5f9;padding:2px 8px;border-radius:4px;">{{ s.student_id }}</code></td>
+            <td style="font-size:13px;">{{ s.department }}</td>
+            <td style="font-size:13px;">{{ s.phone }}</td>
+            <td>
+              {% if s.room_number %}
+                <span class="badge-modern badge-primary"><i class="bi bi-door-closed"></i> {{ s.room_number }}</span>
+              {% else %}
+                <span class="badge-modern badge-gray">Unassigned</span>
+              {% endif %}
+            </td>
+            <td style="font-size:12px;color:var(--text-muted);">{{ s.joining_date }}</td>
+            <td>
+              <span class="badge-modern {% if s.status=='Active' %}badge-success{% else %}badge-danger{% endif %}">
+                <span class="status-dot {% if s.status=='Active' %}dot-green{% else %}dot-red{% endif %}"></span>
+                {{ s.status }}
+              </span>
+            </td>
+            <td>
+              <div style="display:flex;gap:6px;justify-content:flex-end;align-items:center;">
+                <!-- 360° Profile Button -->
+                <a href="{{ url_for('student_360_profile', sid=s.id) }}"
+                   class="btn btn-sm"
+                   style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:11px;padding:5px 10px;"
+                   title="360° Profile">
+                  <i class="bi bi-person-badge-fill"></i> Profile
+                </a>
+                <!-- Edit Button -->
+                <button class="btn btn-icon btn-light" title="Edit"
+                  data-edit-id="{{ s.id }}"
+                  data-edit='{"name":"{{ s.name }}","student_id":"{{ s.student_id }}","department":"{{ s.department }}","phone":"{{ s.phone }}","room_id":"{{ s.room_id or '' }}","address":"{{ (s.address or '')|replace('"',"'") }}","joining_date":"{{ s.joining_date }}","email":"{{ s.email or '' }}","emergency_contact":"{{ s.emergency_contact or '' }}","status":"{{ s.status }}"}'
+                  data-target="editStudentModal"
+                  onclick="openEditStudent(this)">
+                  <i class="bi bi-pencil-fill" style="color:#6366f1;"></i>
+                </button>
+                <!-- Delete Button -->
+                <form method="POST" action="{{ url_for('delete_student_route', sid=s.id) }}" class="delete-form">
+                  <button type="submit" class="btn btn-icon btn-light" title="Delete">
+                    <i class="bi bi-trash3-fill" style="color:#ef4444;"></i>
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <i class="bi bi-people"></i>
+      <h6>No Students Found</h6>
+      <p>{% if search %}No results for "{{ search }}". {% endif %}Add a student to get started.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- ── ADD STUDENT MODAL ── -->
+<div class="modal fade" id="addStudentModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-person-plus-fill me-2" style="color:#6366f1;"></i>Add New Student</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" action="{{ url_for('add_student_route') }}">
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Student ID *</label>
+              <input type="text" name="student_id" class="form-control" placeholder="e.g. STU001" required/>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Full Name *</label>
+              <input type="text" name="name" class="form-control" placeholder="Full name" required/>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Department *</label>
+              <select name="department" class="form-select" required>
+                <option value="">Select Department</option>
+                {% for d in ['Computer Science','Computer Science & Engineering','Botany','IMBA'] %}
+                <option value="{{ d }}">{{ d }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Phone *</label>
+              <input type="text" name="phone" class="form-control" placeholder="+91 XXXXX XXXXX" required/>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Email</label>
+              <input type="email" name="email" class="form-control" placeholder="student@email.com"/>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Emergency Contact</label>
+              <input type="text" name="emergency_contact" class="form-control" placeholder="Parent/Guardian number"/>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Joining Date *</label>
+              <input type="date" name="joining_date" class="form-control" required/>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Room Allocation</label>
+              <select name="room_id" class="form-select">
+                <option value="">No Room Assigned</option>
+                {% for r in vacant_rooms %}
+                <option value="{{ r.id }}">Room {{ r.room_number }} ({{ r.room_type }}) — Vacant</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Address</label>
+              <textarea name="address" class="form-control" rows="2" placeholder="Full residential address"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Add Student</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ── EDIT STUDENT MODAL ── -->
+<div class="modal fade" id="editStudentModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-pencil-fill me-2" style="color:#6366f1;"></i>Edit Student</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" id="editStudentForm" action="">
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Student ID *</label>
+              <input type="text" name="student_id" id="edit_student_id" class="form-control" required/>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Full Name *</label>
+              <input type="text" name="name" id="edit_name" class="form-control" required/>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Department *</label>
+              <select name="department" id="edit_department" class="form-select" required>
+                {% for d in ['Computer Science','Computer Science & Engineering','Botany','IMBA'] %}
+                <option value="{{ d }}">{{ d }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Phone *</label>
+              <input type="text" name="phone" id="edit_phone" class="form-control" required/>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Email</label>
+              <input type="email" name="email" id="edit_email" class="form-control"/>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Emergency Contact</label>
+              <input type="text" name="emergency_contact" id="edit_emergency_contact" class="form-control"/>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Joining Date *</label>
+              <input type="date" name="joining_date" id="edit_joining_date" class="form-control" required/>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Room</label>
+              <select name="room_id" id="edit_room_id" class="form-select">
+                <option value="">No Room</option>
+                {% for r in rooms %}
+                <option value="{{ r.id }}">Room {{ r.room_number }} ({{ r.room_type }})</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Status</label>
+              <select name="status" id="edit_status" class="form-select">
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+                <option value="Alumni">Alumni</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Address</label>
+              <textarea name="address" id="edit_address" class="form-control" rows="2"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function openEditStudent(btn) {
+  const data = JSON.parse(btn.getAttribute('data-edit'));
+  const sid  = btn.getAttribute('data-edit-id');
+  document.getElementById('editStudentForm').action = `/students/edit/${sid}`;
+  document.getElementById('edit_student_id').value      = data.student_id || '';
+  document.getElementById('edit_name').value            = data.name || '';
+  document.getElementById('edit_phone').value           = data.phone || '';
+  document.getElementById('edit_email').value           = data.email || '';
+  document.getElementById('edit_emergency_contact').value = data.emergency_contact || '';
+  document.getElementById('edit_joining_date').value    = data.joining_date || '';
+  document.getElementById('edit_address').value         = data.address || '';
+  const deptSel   = document.getElementById('edit_department');
+  const roomSel   = document.getElementById('edit_room_id');
+  const statusSel = document.getElementById('edit_status');
+  if (deptSel)   deptSel.value   = data.department || '';
+  if (roomSel)   roomSel.value   = data.room_id    || '';
+  if (statusSel) statusSel.value = data.status     || 'Active';
+  new bootstrap.Modal(document.getElementById('editStudentModal')).show();
+}
+</script>
+{% endblock %}

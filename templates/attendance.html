@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+{% block title %}Attendance — HMS{% endblock %}
+{% block page_title %}Attendance Management{% endblock %}
+{% block breadcrumb %}HMS &rsaquo; Attendance{% endblock %}
+
+{% block content %}
+
+<div class="section-header mb-4">
+  <div>
+    <div class="section-title">Attendance</div>
+    <div class="section-subtitle">Mark and track daily student attendance</div>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    <button class="btn btn-light btn-sm" id="markAllPresent"><i class="bi bi-check-all"></i> All Present</button>
+    <button class="btn btn-light btn-sm" id="markAllAbsent"><i class="bi bi-x-lg"></i> All Absent</button>
+  </div>
+</div>
+
+<!-- Date Picker -->
+<div class="card mb-4">
+  <div class="card-body" style="padding:16px 20px;">
+    <form method="GET" action="{{ url_for('attendance') }}" class="d-flex align-items-center gap-3 flex-wrap">
+      <label class="form-label mb-0" style="white-space:nowrap;"><i class="bi bi-calendar3 me-2" style="color:#6366f1;"></i>Select Date:</label>
+      <input type="date" name="date" class="form-control" style="max-width:200px;" value="{{ sel_date }}" onchange="this.form.submit()"/>
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+        <span class="badge-modern badge-success"><i class="bi bi-person-check"></i> {{ marked|selectattr('status','equalto','Present')|list|length }} Present</span>
+        <span class="badge-modern badge-danger"><i class="bi bi-person-x"></i> {{ marked|selectattr('status','equalto','Absent')|list|length }} Absent</span>
+        <span class="badge-modern badge-warning"><i class="bi bi-person-dash"></i> {{ marked|selectattr('status','equalto','Leave')|list|length }} Leave</span>
+        <span class="badge-modern badge-gray"><i class="bi bi-question-circle"></i> {{ unmarked|length }} Unmarked</span>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Mark Attendance Form -->
+{% if unmarked %}
+<div class="card mb-4">
+  <div class="card-header">
+    <span class="card-title"><i class="bi bi-calendar-check-fill"></i> Mark Attendance — {{ sel_date }}</span>
+    <span class="badge-modern badge-warning">{{ unmarked|length }} Pending</span>
+  </div>
+  <div class="card-body">
+    <form method="POST" action="{{ url_for('mark_attendance_route') }}">
+      <input type="hidden" name="date" value="{{ sel_date }}"/>
+      <div class="att-grid mb-4">
+        {% for s in unmarked %}
+        <div class="att-student-card">
+          <div class="avatar avatar-sm">{{ s.name[0]|upper }}</div>
+          <div style="min-width:0;">
+            <div style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ s.name }}</div>
+            <div style="font-size:11px;color:var(--text-muted);">{{ s.student_id }}</div>
+          </div>
+          <input type="hidden" name="student_ids" value="{{ s.id }}"/>
+          <div class="att-toggle">
+            <div class="att-radio">
+              <input type="radio" name="status_{{ s.id }}" id="p{{ s.id }}" value="Present" checked/>
+              <label for="p{{ s.id }}" class="present-lbl">P</label>
+            </div>
+            <div class="att-radio">
+              <input type="radio" name="status_{{ s.id }}" id="a{{ s.id }}" value="Absent"/>
+              <label for="a{{ s.id }}" class="absent-lbl">A</label>
+            </div>
+            <div class="att-radio">
+              <input type="radio" name="status_{{ s.id }}" id="l{{ s.id }}" value="Leave"/>
+              <label for="l{{ s.id }}" class="leave-lbl">L</label>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- Hidden statuses linked to radios via JS -->
+      <div id="statusContainer"></div>
+
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button type="submit" class="btn btn-primary" onclick="collectStatuses(this.form)">
+          <i class="bi bi-save2-fill"></i> Save Attendance ({{ unmarked|length }} students)
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<!-- Marked Today -->
+{% if marked %}
+<div class="card mb-4">
+  <div class="card-header">
+    <span class="card-title"><i class="bi bi-list-check"></i> Attendance Record — {{ sel_date }}</span>
+    <span class="badge-modern badge-primary">{{ marked|length }} Marked</span>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table-modern w-100">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Student</th>
+            <th>ID</th>
+            <th>Department</th>
+            <th>Room</th>
+            <th>Status</th>
+            <th>Remarks</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in marked %}
+          <tr>
+            <td style="color:var(--text-muted);font-size:12px;">{{ loop.index }}</td>
+            <td>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div class="avatar avatar-sm">{{ r.name[0]|upper }}</div>
+                <div style="font-weight:600;font-size:13.5px;">{{ r.name }}</div>
+              </div>
+            </td>
+            <td><code style="font-size:12px;background:#f1f5f9;padding:2px 8px;border-radius:4px;">{{ r.sid }}</code></td>
+            <td style="font-size:13px;">{{ r.department }}</td>
+            <td style="font-size:13px;">{{ r.room_number or '—' }}</td>
+            <td>
+              <span class="badge-modern {% if r.status=='Present' %}badge-success{% elif r.status=='Absent' %}badge-danger{% else %}badge-warning{% endif %}">
+                <span class="status-dot {% if r.status=='Present' %}dot-green{% elif r.status=='Absent' %}dot-red{% else %}dot-yellow{% endif %}"></span>
+                {{ r.status }}
+              </span>
+            </td>
+            <td style="font-size:12px;color:var(--text-muted);">{{ r.remarks or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Defaulters -->
+{% if defaulters %}
+<div class="card">
+  <div class="card-header">
+    <span class="card-title"><i class="bi bi-exclamation-triangle-fill" style="color:#ef4444;"></i> Defaulters List
+      <span class="text-muted" style="font-size:12px;font-weight:400;">(Attendance &lt; 75%)</span>
+    </span>
+    <span class="badge-modern badge-danger">{{ defaulters|length }} Students</span>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table-modern w-100">
+        <thead>
+          <tr><th>#</th><th>Student</th><th>ID</th><th>Department</th><th>Present</th><th>Absent</th><th>Attendance %</th></tr>
+        </thead>
+        <tbody>
+          {% for d in defaulters %}
+          <tr>
+            <td style="color:var(--text-muted);font-size:12px;">{{ loop.index }}</td>
+            <td>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div class="avatar avatar-sm" style="background:linear-gradient(135deg,#ef4444,#f97316);">{{ d.name[0]|upper }}</div>
+                <div style="font-weight:600;font-size:13.5px;">{{ d.name }}</div>
+              </div>
+            </td>
+            <td><code style="font-size:12px;background:#fee2e2;padding:2px 8px;border-radius:4px;color:#b91c1c;">{{ d.student_id }}</code></td>
+            <td style="font-size:13px;">{{ d.department }}</td>
+            <td><span class="badge-modern badge-success">{{ d.present }}</span></td>
+            <td><span class="badge-modern badge-danger">{{ d.absent }}</span></td>
+            <td>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div class="progress-modern" style="flex:1;min-width:80px;">
+                  <div class="progress-bar-modern" data-width="{{ d.percentage }}"
+                       style="background:{% if d.percentage < 50 %}#ef4444{% else %}#f59e0b{% endif %};width:0%;">
+                  </div>
+                </div>
+                <span style="font-size:12px;font-weight:700;color:#ef4444;">{{ d.percentage }}%</span>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if not marked and not unmarked %}
+<div class="card">
+  <div class="empty-state">
+    <i class="bi bi-calendar-x"></i>
+    <h6>No students to mark attendance</h6>
+    <p>Add students first or select a different date.</p>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Collect radio button values into hidden inputs named "statuses"
+function collectStatuses(form) {
+  document.querySelectorAll('#statusContainer input').forEach(el => el.remove());
+  document.querySelectorAll('input[name^="status_"]').forEach(radio => {
+    if (radio.checked) {
+      const hidden = document.createElement('input');
+      hidden.type = 'hidden';
+      hidden.name = 'statuses';
+      hidden.value = radio.value;
+      document.getElementById('statusContainer').appendChild(hidden);
+    }
+  });
+}
+
+// Override mark all to also update radio buttons
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('markAllPresent')?.addEventListener('click', () => {
+    document.querySelectorAll('input[type=radio][value=Present]').forEach(r => r.checked = true);
+  });
+  document.getElementById('markAllAbsent')?.addEventListener('click', () => {
+    document.querySelectorAll('input[type=radio][value=Absent]').forEach(r => r.checked = true);
+  });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}Hostel Management System{% endblock %}</title>
+
+  <!-- Bootstrap 5 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"/>
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"/>
+  <!-- <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"> -->
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+<!-- Sidebar Overlay (mobile) -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<!-- ══════════════ SIDEBAR ══════════════ -->
+<aside class="sidebar" id="sidebar">
+  <a href="{{ url_for('dashboard') }}" class="sidebar-brand">
+    <div class="sidebar-brand-icon"><i class="bi bi-building"></i></div>
+    <div class="sidebar-brand-text">
+      <div class="title">HMS Portal</div>
+      <div class="subtitle">Admin Dashboard</div>
+    </div>
+  </a>
+
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">Main</div>
+
+    <div class="nav-item">
+      <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint=='dashboard' %}active{% endif %}">
+        <i class="bi bi-grid-1x2-fill"></i><span>Dashboard</span>
+      </a>
+    </div>
+
+    <div class="nav-section-label">Management</div>
+
+    <div class="nav-item">
+      <a href="{{ url_for('students') }}" class="nav-link {% if request.endpoint and 'student' in request.endpoint %}active{% endif %}">
+        <i class="bi bi-people-fill"></i><span>Students</span>
+      </a>
+    </div>
+    <div class="nav-item">
+      <a href="{{ url_for('rooms') }}" class="nav-link {% if request.endpoint and 'room' in request.endpoint %}active{% endif %}">
+        <i class="bi bi-door-open-fill"></i><span>Rooms</span>
+      </a>
+    </div>
+    <div class="nav-item">
+      <a href="{{ url_for('attendance') }}" class="nav-link {% if request.endpoint and 'attendance' in request.endpoint %}active{% endif %}">
+        <i class="bi bi-calendar-check-fill"></i><span>Attendance</span>
+      </a>
+    </div>
+
+    <div class="nav-section-label">Monitoring</div>
+
+    <div class="nav-item">
+      <a href="{{ url_for('wastage') }}" class="nav-link {% if request.endpoint and 'wastage' in request.endpoint %}active{% endif %}">
+        <i class="bi bi-trash3-fill"></i><span>Food Wastage</span>
+      </a>
+    </div>
+    <div class="nav-item">
+      <a href="{{ url_for('fees') }}" class="nav-link {% if request.endpoint and 'fee' in request.endpoint %}active{% endif %}">
+        <i class="bi bi-cash-coin"></i><span>Fees</span>
+      </a>
+    </div>
+
+    <div class="nav-section-label">Operations</div>
+
+    <div class="nav-item">
+      <a href="{{ url_for('complaints') }}" class="nav-link {% if request.endpoint and 'complaint' in request.endpoint %}active{% endif %}">
+        <i class="bi bi-chat-square-dots-fill"></i><span>Complaints</span>
+      </a>
+    </div>
+    <div class="nav-item">
+      <a href="{{ url_for('visitors') }}" class="nav-link {% if request.endpoint and 'visitor' in request.endpoint %}active{% endif %}">
+        <i class="bi bi-person-badge-fill"></i><span>Visitors</span>
+      </a>
+    </div>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div style="font-size:11px;color:rgba(148,163,184,.4);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">
+      Logged in as <span style="color:rgba(148,163,184,.7);">{{ session.admin }}</span>
+    </div>
+    <a href="{{ url_for('logout') }}" class="logout-btn">
+      <i class="bi bi-box-arrow-left"></i> Logout
+    </a>
+  </div>
+</aside>
+
+<!-- ══════════════ MAIN WRAPPER ══════════════ -->
+<div class="main-wrapper">
+
+  <!-- Topbar -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="sidebar-toggle-btn" id="sidebarToggle">
+        <i class="bi bi-list"></i>
+      </button>
+      <div>
+        <div class="page-title">{% block page_title %}Dashboard{% endblock %}</div>
+        <div class="page-breadcrumb">{% block breadcrumb %}HMS &rsaquo; Overview{% endblock %}</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="topbar-date" id="liveClock"></div>
+      <div class="topbar-avatar" title="{{ session.admin }}">
+        {{ (session.admin or 'A')[0]|upper }}
+      </div>
+    </div>
+  </header>
+
+  <!-- Flash Messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash-container">
+        {% for cat, msg in messages %}
+          <div class="flash-alert alert-{{ cat }}">
+            <i class="bi bi-{% if cat=='success' %}check-circle-fill{% elif cat=='danger' %}x-circle-fill{% elif cat=='warning' %}exclamation-triangle-fill{% else %}info-circle-fill{% endif %}"></i>
+            <span>{{ msg }}</span>
+            <button class="btn-close" type="button">&times;</button>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <!-- Page Content -->
+  <main class="page-content">
+    {% block content %}{% endblock %}
+  </main>
+{# <footer class="text-center py-3 mt-5 border-top bg-white">
+    <p class="mb-0">
+        Made with ❤️ by <strong>Aarif Mushtaq & Team</strong>
+    </p>
+</footer> #}
+</div><!-- /main-wrapper -->
+
+<!-- Bootstrap 5 JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<!-- Custom JS -->
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+
+
+<script>
+  // Live clock
+  function tick() {
+    const el = document.getElementById('liveClock');
+    if (el) el.textContent = new Date().toLocaleString('en-IN', {weekday:'short',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+  }
+  tick(); setInterval(tick, 1000);
+</script>
+
+{% block extra_js %}{% endblock %}
+
+</body>
+</html>
