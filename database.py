@@ -16,7 +16,7 @@ def init_db():
     c = conn.cursor()
 
     c.executescript("""
-        CREATE TABLE IF NOT EXISTS admin (
+        CREATE TABLE IF not exists admin (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL,
